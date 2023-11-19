@@ -3,6 +3,10 @@ from discord.ext import commands
 import yt_dlp
 import g4f
 from gtts import gTTS
+import asyncio
+import time
+import os, glob
+
 from SetUp import TOKEN, IDENTITY
 intents = discord.Intents.default()
 intents.messages = True
@@ -11,8 +15,8 @@ intents.message_content = True  # Add this line
 intents.voice_states = True  # Enable voice state tracking
 bot = commands.Bot(command_prefix='!', intents=intents)
 voice_client = None
-
-
+song_queue = []
+is_downloading = False
 
 # Define a global voice_client variable initially set to None
 voice_client = None
@@ -61,8 +65,48 @@ async def play(ctx):
     else:
         await ctx.send("You need to be in a voice channel to use this command.")
 
+async def play_next(ctx):
+    global voice_client
+    if song_queue:
+        next_song = song_queue.pop(0)
+        ctx = discord.utils.get(bot.guilds[0].voice_channels, name="General")
+        await youtube(ctx, query = next_song)
+
+def play_next_wrapper(error):
+    ctx = discord.utils.get(bot.guilds[0].voice_channels, name="General")
+
+    if error:
+        print(f"Playback error: {error}")
+    
+    fut = asyncio.run_coroutine_threadsafe(play_next(ctx), bot.loop)
+    try:
+        fut.result()
+    except Exception as e:
+        print(f"Error in play_next: {e}")
+
+    # Check if the queue is empty and voice client is not playing
+    if not song_queue and (not voice_client or not voice_client.is_playing()):
+        cleanup_downloads_folder()
+
+
+def cleanup_downloads_folder():
+    # Path to the downloads folder
+    downloads_folder = 'downloads/'
+
+    # Find all .mp3 files in the folder
+    mp3_files = glob.glob(os.path.join(downloads_folder, '*.mp3'))
+
+    # Delete each file
+    for file_path in mp3_files:
+        try:
+            os.remove(file_path)
+            print(f"Deleted: {file_path}")
+        except Exception as e:
+            print(f"Error deleting {file_path}: {e}")
+
 @bot.command(name='play', help='Play audio from a YouTube link or search query')
 async def youtube(ctx, *, query: str = None):
+    global is_downloading
     if not query:
         await ctx.send("Please provide a YouTube link or search query.")
         return
@@ -74,7 +118,7 @@ async def youtube(ctx, *, query: str = None):
     global voice_client
     if not voice_client or not voice_client.is_connected():
         voice_client = await voice_channel.connect()
-
+    unique_filename = f'downloads/song_{int(time.time())}'
     ydl_opts = {
         'format': 'bestaudio/best',
         'postprocessors': [{
@@ -82,31 +126,36 @@ async def youtube(ctx, *, query: str = None):
             'preferredcodec': 'mp3',
             'preferredquality': '192',
         }],
-        'outtmpl': 'downloads/song.%(ext)s',
+        'outtmpl': unique_filename,
     }
 
-    # Check if the query is a URL or just a search string
-    if "http" in query or "www" in query:
-        url = query
+    if voice_client.is_playing() or voice_client.is_paused() or is_downloading == True:
+        song_queue.append(query)
+        await ctx.send(f"Added to queue: {query}")
     else:
-        query = query + " lyrics"
-        # Perform a search to find the first video matching the query
+        is_downloading = True
+        if "http" in query or "www" in query:
+            url = query
+        else:
+            query = query + " lyrics"
+            # Perform a search to find the first video matching the query
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                search_result = ydl.extract_info(f"ytsearch:{query}", download=False)
+                url = search_result['entries'][0]['webpage_url']
+
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            search_result = ydl.extract_info(f"ytsearch:{query}", download=False)
-            url = search_result['entries'][0]['webpage_url']
+            info_dict = ydl.extract_info(url, download=False)
+            video_length = info_dict.get('duration')
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info_dict = ydl.extract_info(url, download=False)
-        video_length = info_dict.get('duration')
+            if video_length > 420:
+                await bot_channel.send("The song is too long!")
+                return
 
-        if video_length > 420:
-            await bot_channel.send("The song is too long!")
-            return
-
-        ydl.download([url])
-
-    voice_client.play(discord.FFmpegPCMAudio('downloads/song.mp3', options='-filter:a "volume=0.15"'))
-    await bot_channel.send(f"Playing: {info_dict['title']}")
+            ydl.download([url])
+        is_downloading = False
+        voice_client.play(discord.FFmpegPCMAudio(unique_filename + ".mp3", options='-filter:a "volume=0.15"'), after=play_next_wrapper)
+        await bot_channel.send(f"Playing: {info_dict['title']}")
+        
 
 
 @bot.event
@@ -117,11 +166,13 @@ async def on_command_error(ctx, error):
 @bot.command(name='skip', help='Stop the currently playing song or TTS')
 async def skip(ctx):
     global voice_client
-    if voice_client and voice_client.is_playing():
+    if voice_client and (voice_client.is_playing() or voice_client.is_paused()):
         voice_client.stop()
         await ctx.send("Skipped the current playback!")
+        await play_next(ctx)  # Call play_next to immediately start the next song
     else:
         await ctx.send("No audio is currently playing.")
+
 
 @bot.command(name='ringo', help='Prompt our AI companion')
 async def ringo(ctx, *, query: str = None):
@@ -136,6 +187,20 @@ async def ringo(ctx, *, query: str = None):
         )
     res = res + " :pear:"
     await ctx.send(f"{res}")
+
+@bot.command(name='queue', help='Displays the current song queue')
+async def queue(ctx):
+    if not song_queue:
+        await ctx.send("The queue is currently empty.")
+        return
+
+    # Constructing the queue message
+    queue_message = "Current queue:\n"
+    for index, song in enumerate(song_queue, start=1):
+        queue_message += f"{index}. {song}\n"
+
+    await ctx.send(queue_message)
+
 
 async def tts(text, voice_client):
     

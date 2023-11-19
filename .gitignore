@@ -6,4 +6,5 @@ SetUp.py
 recording.wav
 tts.mp3
 song.mp3
-downloads\song.mp3
+downloads/*
+!downloads/.gitkeep
