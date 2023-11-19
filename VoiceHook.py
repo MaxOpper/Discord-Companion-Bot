@@ -12,9 +12,6 @@ SAMPLE_RATE = 44100
 FILENAME = "recording.wav"
 model = whisper.load_model("base")
 is_recording = False
-MAX_HISTORY_MESSAGES = 5  # You can adjust this number based on your needs
-message_history = []  # This will store the recent messages
-message_history.append(" Prompt: None " + " Ringo Response: None")
 
 
 def prepend_exclamation(match):
@@ -58,7 +55,6 @@ def on_press(key):
     
 
 def on_release(key):
-    global message_history
 
     if key == Key.f6:
         print("DONE")
@@ -70,18 +66,13 @@ def on_release(key):
 
         res = g4f.ChatCompletion.create(
             model=g4f.models.default,
-            messages=[{"role": "user", "content": IDENTITY + message_history[0] + "Current Prompt: " + text}],
+            messages=[{"role": "user", "content ": IDENTITY + " Current Prompt: " + text}],
             proxy="http://host:port",
             # or socks5://user:pass@host:port
             timeout=120,  # in secs
         )
 
-        message_history.append(" Prompt: " + text + " Ringo Response" + res)
-        if len(message_history) > MAX_HISTORY_MESSAGES:
-            message_history.pop(0)
-        print(message_history)
-        if len(message_history) > MAX_HISTORY_MESSAGES:
-            message_history.pop(0)
+
 
         if len(res) > 2000:
             split_point = res[:2000].rfind(" ")
