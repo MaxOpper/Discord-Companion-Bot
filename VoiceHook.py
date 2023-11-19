@@ -69,6 +69,8 @@ def on_release(key):
         text = re.sub(r"\breplay\b|\bskip\b|\bplay\b", prepend_exclamation, text)
         if text:
             send_to_discord(text, DISCORD_CHANNEL_WEBHOOK_TRANSCRIBE, False)
+        if "!play" or "!skip" or "!replay" in text:
+            return
 
         res = g4f.ChatCompletion.create(
             model=g4f.models.default,
