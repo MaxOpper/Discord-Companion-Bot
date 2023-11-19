@@ -195,12 +195,19 @@ async def queue(ctx):
         return
 
     # Constructing the queue message
-    queue_message = "Current queue:\n"
+    queue_message = "Current Queue:\n"
     for index, song in enumerate(song_queue, start=1):
         queue_message += f"{index}. {song}\n"
 
-    await ctx.send(queue_message)
+    await ctx.send("```yaml\n" + queue_message + "```")
 
+@bot.command(name='clear', help='Clears the song queue')
+async def queue(ctx):
+    if not song_queue:
+        await ctx.send("```yaml\n Queue is already empty!```")
+    else:
+        song_queue.clear()
+        await ctx.send("```yaml\n Queue cleared!```")
 
 async def tts(text, voice_client):
     
