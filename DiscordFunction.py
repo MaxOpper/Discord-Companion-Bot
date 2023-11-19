@@ -131,7 +131,7 @@ async def youtube(ctx, *, query: str = None):
 
     if voice_client.is_playing() or voice_client.is_paused() or is_downloading == True:
         song_queue.append(query)
-        await ctx.send(f"Added to queue: {query}")
+        await ctx.send("```yaml\n" + f"Added to queue: {query}" + "```")
     else:
         is_downloading = True
         if "http" in query or "www" in query:
@@ -154,7 +154,7 @@ async def youtube(ctx, *, query: str = None):
             ydl.download([url])
         is_downloading = False
         voice_client.play(discord.FFmpegPCMAudio(unique_filename + ".mp3", options='-filter:a "volume=0.15"'), after=play_next_wrapper)
-        await bot_channel.send(f"Playing: {info_dict['title']}")
+        await bot_channel.send("```yaml\n" + f"Playing: {info_dict['title']}" + "```")
         
 
 
@@ -168,10 +168,10 @@ async def skip(ctx):
     global voice_client
     if voice_client and (voice_client.is_playing() or voice_client.is_paused()):
         voice_client.stop()
-        await ctx.send("Skipped the current playback!")
+        await ctx.send("```yaml\n" + "Skipped the current playback!" + "```")
         await play_next(ctx)  # Call play_next to immediately start the next song
     else:
-        await ctx.send("No audio is currently playing.")
+        await ctx.send("```yaml\n" + "No audio is currently playing." + "```")
 
 
 @bot.command(name='ringo', help='Prompt our AI companion')
@@ -191,7 +191,7 @@ async def ringo(ctx, *, query: str = None):
 @bot.command(name='queue', help='Displays the current song queue')
 async def queue(ctx):
     if not song_queue:
-        await ctx.send("The queue is currently empty.")
+        await ctx.send("```yaml\n" + "The queue is currently empty." + "```")
         return
 
     # Constructing the queue message with capitalized song titles
