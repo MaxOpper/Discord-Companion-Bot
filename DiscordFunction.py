@@ -194,12 +194,14 @@ async def queue(ctx):
         await ctx.send("The queue is currently empty.")
         return
 
-    # Constructing the queue message
+    # Constructing the queue message with capitalized song titles
     queue_message = "Current Queue:\n"
     for index, song in enumerate(song_queue, start=1):
-        queue_message += f"{index}. {song}\n"
+        capitalized_song = song.title()  # Capitalize the first letter of each word
+        queue_message += f"{index}. {capitalized_song}\n"
 
     await ctx.send("```yaml\n" + queue_message + "```")
+
 
 @bot.command(name='clear', help='Clears the song queue')
 async def queue(ctx):
