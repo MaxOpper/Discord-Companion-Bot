@@ -6,6 +6,7 @@ from scipy.io.wavfile import write
 import re
 import g4f
 import threading
+import numpy as np
 from SetUp import DISCORD_CHANNEL_WEBHOOK_TRANSCRIBE, DISCORD_CHANNEL_WEBHOOK_OUTPUT, IDENTITY
 RECORD_SECONDS = 5
 SAMPLE_RATE = 44100
@@ -25,21 +26,26 @@ def transcribe_audio():
     return text
 
 def record_audio():
-    global is_recording
-    # Record the audio in a separate thread
+    global is_recording, record_thread
     def recording_thread():
-        recording = sd.rec(int(RECORD_SECONDS * SAMPLE_RATE), samplerate=SAMPLE_RATE, channels=2)
-        sd.wait()  # Wait for the recording to finish
-        write(FILENAME, SAMPLE_RATE, recording)  # Save the recording
+        with sd.InputStream(samplerate=SAMPLE_RATE, channels=2) as stream:
+            audio_data = []
+            while is_recording:
+                data, overflowed = stream.read(SAMPLE_RATE)  # Read one second of audio data
+                if overflowed:
+                    print("Warning: Audio buffer overflowed")
+                audio_data.append(data)
+            recording = np.concatenate(audio_data, axis=0)
+            write(FILENAME, SAMPLE_RATE, recording)  # Save the recording
 
     is_recording = True
-    thread = threading.Thread(target=recording_thread)
-    thread.start()
+    record_thread = threading.Thread(target=recording_thread)
+    record_thread.start()
 
 def stop_recording():
     global is_recording
     is_recording = False
-    sd.stop()
+    record_thread.join()
 
 # Function to execute when a key is pressed
 def on_press(key):
@@ -66,12 +72,11 @@ def on_release(key):
 
         res = g4f.ChatCompletion.create(
             model=g4f.models.default,
-            messages=[{"role": "user", "content ": IDENTITY + " Current Prompt: " + text}],
+            messages=[{"role": "user", "content": IDENTITY + " Current Prompt: " + text}],
             proxy="http://host:port",
             # or socks5://user:pass@host:port
             timeout=120,  # in secs
         )
-
 
 
         if len(res) > 2000:
