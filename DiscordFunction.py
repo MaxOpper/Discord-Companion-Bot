@@ -6,8 +6,8 @@ from gtts import gTTS
 import asyncio
 import time
 import os, glob
-
-from SetUp import TOKEN, IDENTITY
+import requests
+from SetUp import TOKEN, IDENTITY, WEATHER_API_KEY
 intents = discord.Intents.default()
 intents.messages = True
 intents.guilds = True
@@ -210,6 +210,68 @@ async def queue(ctx):
     else:
         song_queue.clear()
         await ctx.send("```yaml\n Queue cleared!```")
+
+@bot.command(name='weather', help='Displays the weather for a specified location')
+async def weather(ctx, *, city: str):
+    url = f"http://api.weatherapi.com/v1/current.json?key={WEATHER_API_KEY}&q={city}"
+
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        weather_data = response.json()
+
+        if weather_data:
+            location = weather_data["location"]["name"]
+            condition = weather_data["current"]["condition"]["text"]
+            temperature = weather_data["current"]["temp_f"]
+            feels_like = weather_data["current"]["feelslike_f"]
+            humidity = weather_data["current"]["humidity"]
+
+            weather_report = (
+                f"Weather in {location}:\n"
+                f"- Condition: {condition}\n"
+                f"- Temperature: {temperature}°F\n"
+                f"- Feels Like: {feels_like}°F\n"
+                f"- Humidity: {humidity}%"
+            )
+            await ctx.send(weather_report)
+        else:
+            await ctx.send("Unable to retrieve weather data.")
+
+    except requests.RequestException as e:
+        await ctx.send(f"An error occurred: {e}")
+
+@bot.command(name='forecast', help='Displays today\'s weather forecast for a specified location')
+async def forecast(ctx, *, city: str):
+    url = f"http://api.weatherapi.com/v1/forecast.json?key={WEATHER_API_KEY}&q={city}&days=1"
+
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        forecast_data = response.json()
+
+        if forecast_data:
+            location = forecast_data["location"]["name"]
+            forecast_today = forecast_data["forecast"]["forecastday"][0]
+            condition = forecast_today["day"]["condition"]["text"]
+            max_temp = forecast_today["day"]["maxtemp_f"]
+            min_temp = forecast_today["day"]["mintemp_f"]
+            avg_humidity = forecast_today["day"]["avghumidity"]
+            max_chance_of_rain = max(hour['chance_of_rain'] for hour in forecast_today["hour"])
+            forecast_report = (
+                f"Today's Weather Forecast for {location}:\n"
+                f"- Conditions: {condition}\n"
+                f"- Max Temperature: {max_temp}°F\n"
+                f"- Min Temperature: {min_temp}°F\n"
+                f"- Average Humidity: {avg_humidity}%\n"
+                f"- Max Chance of Rain: {max_chance_of_rain}%"
+            )
+            await ctx.send(forecast_report)
+        else:
+            await ctx.send("Unable to retrieve forecast data.")
+
+    except requests.RequestException as e:
+        await ctx.send(f"An error occurred: {e}")
 
 async def tts(text, voice_client):
     
