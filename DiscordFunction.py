@@ -7,7 +7,14 @@ import asyncio
 import time
 import os, glob
 import requests
-from SetUp import TOKEN, IDENTITY, WEATHER_API_KEY
+import json
+with open('config.json', 'r') as config_file:
+    config = json.load(config_file)
+TOKEN = config.get('bot_token')
+WEATHER_API_KEY = config.get('weather_api')
+IDENTITY = config.get('identity')
+VOICE_CHANNEL = config.get('preferred_voice_channel')
+TEXT_CHANNEL = config.get('preferred_text_channel')
 intents = discord.Intents.default()
 intents.messages = True
 intents.guilds = True
@@ -26,7 +33,7 @@ async def on_ready():
     global voice_client  # Declare the variable as global
     
     print(f'{bot.user.name} has connected to Discord!')
-    voice_channel = discord.utils.get(bot.guilds[0].voice_channels, name="General")
+    voice_channel = discord.utils.get(bot.guilds[0].voice_channels, name=VOICE_CHANNEL)
 
     if voice_channel:
         if voice_client is None:  # Check if it's the first time connecting
@@ -49,7 +56,7 @@ async def on_message(message):
             # Split the message by '!play' and strip leading and trailing whitespaces
             content_after_play = message.content.split('!play', 1)[1].strip()
             # Call the youtube function with the content after '!play'
-            ctx = discord.utils.get(bot.guilds[0].voice_channels, name="General")
+            ctx = discord.utils.get(bot.guilds[0].voice_channels, name=VOICE_CHANNEL)
             await youtube(ctx, query = content_after_play)
         if ':pear:' in message.content:
             await tts(message.content, voice_client)
@@ -69,11 +76,11 @@ async def play_next(ctx):
     global voice_client
     if song_queue:
         next_song = song_queue.pop(0)
-        ctx = discord.utils.get(bot.guilds[0].voice_channels, name="General")
+        ctx = discord.utils.get(bot.guilds[0].voice_channels, name=VOICE_CHANNEL)
         await youtube(ctx, query = next_song)
 
 def play_next_wrapper(error):
-    ctx = discord.utils.get(bot.guilds[0].voice_channels, name="General")
+    ctx = discord.utils.get(bot.guilds[0].voice_channels, name=VOICE_CHANNEL)
 
     if error:
         print(f"Playback error: {error}")
@@ -111,9 +118,9 @@ async def youtube(ctx, *, query: str = None):
         await ctx.send("Please provide a YouTube link or search query.")
         return
     
-    bot_channel = discord.utils.get(ctx.guild.text_channels, name='bot')
+    bot_channel = discord.utils.get(ctx.guild.text_channels, name=TEXT_CHANNEL)
 
-    voice_channel = discord.utils.get(bot.guilds[0].voice_channels, name="General")
+    voice_channel = discord.utils.get(bot.guilds[0].voice_channels, name=VOICE_CHANNEL)
 
     global voice_client
     if not voice_client or not voice_client.is_connected():

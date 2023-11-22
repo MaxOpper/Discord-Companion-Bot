@@ -7,14 +7,20 @@ import re
 import g4f
 import threading
 import numpy as np
-from SetUp import DISCORD_CHANNEL_WEBHOOK_TRANSCRIBE, DISCORD_CHANNEL_WEBHOOK_OUTPUT, IDENTITY
+import json
+
+with open('config.json', 'r') as config_file:
+    config = json.load(config_file)
+IDENTITY = config.get('identity')
+DISCORD_CHANNEL_WEBHOOK_TRANSCRIBE = config.get('channel_webhook_transcribe')
+DISCORD_CHANNEL_WEBHOOK_OUTPUT = config.get('webhook_link')
 RECORD_SECONDS = 5
 SAMPLE_RATE = 44100
 FILENAME = "recording.wav"
-model = whisper.load_model("base")
+model = whisper.load_model("base.en")
 is_recording = False
 
-
+print("Voice script activated, Press F6 to use:")
 def prepend_exclamation(match):
     return f"!{match.group()}"
 
@@ -69,8 +75,9 @@ def on_release(key):
         text = re.sub(r"\breplay\b|\bskip\b|\bplay\b", prepend_exclamation, text)
         if text:
             send_to_discord(text, DISCORD_CHANNEL_WEBHOOK_TRANSCRIBE, False)
-        if "!play" or "!skip" or "!replay" or "!weather" or "!forecast" in text:
+        if any(keyword in text for keyword in ["!play", "!skip", "!replay", "!weather", "!forecast"]):
             return
+
 
         res = g4f.ChatCompletion.create(
             model=g4f.models.default,
@@ -79,7 +86,6 @@ def on_release(key):
             # or socks5://user:pass@host:port
             timeout=120,  # in secs
         )
-
 
         if len(res) > 2000:
             split_point = res[:2000].rfind(" ")
