@@ -58,6 +58,16 @@ async def on_message(message):
             # Call the youtube function with the content after '!play'
             ctx = discord.utils.get(bot.guilds[0].voice_channels, name=VOICE_CHANNEL)
             await youtube(ctx, query = content_after_play)
+        if '!weather' in message.content.lower():
+            content_after_weather = message.content.split('!weather', 1)[1].strip()
+            await weather(ctx, query = content_after_weather)
+        if '!forecast' in message.content.lower():
+            content_after_forecast = message.content.split('!forecast', 1)[1].strip()
+            await forecast(ctx, query = content_after_forecast)
+        if '!clear' in message.content.lower():
+            await clear(ctx)
+        if '!queue' in message.content.lower():
+            await queue(ctx)
         if ':pear:' in message.content:
             await tts(message.content, voice_client)
 
@@ -211,7 +221,7 @@ async def queue(ctx):
 
 
 @bot.command(name='clear', help='Clears the song queue')
-async def queue(ctx):
+async def clear(ctx):
     if not song_queue:
         await ctx.send("```yaml\n Queue is already empty!```")
     else:
