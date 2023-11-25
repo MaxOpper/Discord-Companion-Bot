@@ -14,13 +14,13 @@ with open('config.json', 'r') as config_file:
 IDENTITY = config.get('identity')
 DISCORD_CHANNEL_WEBHOOK_TRANSCRIBE = config.get('channel_webhook_transcribe')
 DISCORD_CHANNEL_WEBHOOK_OUTPUT = config.get('webhook_link')
-RECORD_SECONDS = 5
+PREFERRED_KEYBRIND = config.get('preferred_keybind', 'F6')  # Default to 'F6' if not set
 SAMPLE_RATE = 44100
 FILENAME = "recording.wav"
 model = whisper.load_model("base.en")
 is_recording = False
 
-print("Voice script activated, Press F6 to use:")
+print(f"Voice script activated, Press {PREFERRED_KEYBRIND} to use:", flush=True)
 def prepend_exclamation(match):
     return f"!{match.group()}"
 
@@ -28,7 +28,7 @@ def transcribe_audio():
     # Transcribe the audio file using Whisper
     result = model.transcribe(FILENAME)
     text = result["text"]
-    print("Transcribed text: " + text)
+    print("Transcribed text: " + text, flush=True)
     return text
 
 def record_audio():
@@ -39,7 +39,7 @@ def record_audio():
             while is_recording:
                 data, overflowed = stream.read(SAMPLE_RATE)  # Read one second of audio data
                 if overflowed:
-                    print("Warning: Audio buffer overflowed")
+                    print("Warning: Audio buffer overflowed",flush=True)
                 audio_data.append(data)
             recording = np.concatenate(audio_data, axis=0)
             write(FILENAME, SAMPLE_RATE, recording)  # Save the recording
@@ -55,28 +55,35 @@ def stop_recording():
 
 # Function to execute when a key is pressed
 def on_press(key):
-    global is_recording
-    if key == Key.insert:  # Replace with your key of choice
-        # Send a post request to the Discord webhook URL to trigger the bot command
-        requests.post(DISCORD_CHANNEL_WEBHOOK_TRANSCRIBE, json={"content": "!replay"})
-    if key == Key.home:
-        requests.post(DISCORD_CHANNEL_WEBHOOK_TRANSCRIBE, json={"content": "!skip"})
-    if key == Key.f6 and not is_recording:
-        print("F6 pressed, starting recording...")
-        record_audio()
+    try:
+        if hasattr(key, 'char'):
+            key_char = key.char.upper()  # Convert to uppercase if it's a character key
+        else:
+            key_char = key.name.upper()  # Convert to uppercase for special keys like F6
+
+        if key_char == PREFERRED_KEYBRIND and not is_recording:
+            print(f"{PREFERRED_KEYBRIND} pressed, starting recording...", flush=True)
+            record_audio()
+    except AttributeError:
+        pass  # Handle attribute errors if any
     
 
 def on_release(key):
+    try:
+        if hasattr(key, 'char'):
+            key_char = key.char.upper()  # Convert to uppercase if it's a character key
+        else:
+            key_char = key.name.upper()  # Convert to uppercase for special keys like F6
 
-    if key == Key.f6:
-        print("DONE")
-        stop_recording()
-        text = transcribe_audio()
-        text = re.sub(r"\breplay\b|\bskip\b|\bplay\b|\bweather\b|\bweather\b|\bqueue\b|\bclear\b", prepend_exclamation, text)
-        if text:
-            send_to_discord(text, DISCORD_CHANNEL_WEBHOOK_TRANSCRIBE, False)
-        if any(keyword in text for keyword in ["!play", "!skip", "!replay", "!weather", "!forecast", "!weather", "!queue", "!clear"]):
-            return
+        if key_char == PREFERRED_KEYBRIND:
+            print(f"{PREFERRED_KEYBRIND} released, stopping recording...", flush=True)
+            stop_recording()
+            text = transcribe_audio()
+            text = re.sub(r"\breplay\b|\bskip\b|\bplay\b|\bweather\b|\bweather\b|\bqueue\b|\bclear\b", prepend_exclamation, text)
+            if text:
+                send_to_discord(text, DISCORD_CHANNEL_WEBHOOK_TRANSCRIBE, False)
+            if any(keyword in text for keyword in ["!play", "!skip", "!replay", "!weather", "!forecast", "!weather", "!queue", "!clear"]):
+                return
 
 
         res = g4f.ChatCompletion.create(
@@ -97,6 +104,8 @@ def on_release(key):
             res = res + " :pear:"
             send_to_discord(res, DISCORD_CHANNEL_WEBHOOK_OUTPUT, True)
         pass
+    except AttributeError:
+        pass  # Handle attribute errors if any
 
 def send_to_discord(text, hook, ringo):
     # Send the text to Discord
@@ -106,7 +115,7 @@ def send_to_discord(text, hook, ringo):
     else:
         data = {"content": text}
     response = requests.post(hook, json=data)
-    print(f"Response from Discord: {response.text}")
+    print(f"Response from Discord: {response.text}", flush=True)
 
 # Start listening for key press events
 with Listener(on_press=on_press, on_release=on_release) as listener:

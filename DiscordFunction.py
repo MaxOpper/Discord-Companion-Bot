@@ -32,7 +32,7 @@ voice_client = None
 async def on_ready():
     global voice_client  # Declare the variable as global
     
-    print(f'{bot.user.name} has connected to Discord!')
+    print(f'{bot.user.name} has connected to Discord!', flush=True)
     voice_channel = discord.utils.get(bot.guilds[0].voice_channels, name=VOICE_CHANNEL)
 
     if voice_channel:
@@ -42,7 +42,7 @@ async def on_ready():
         else:
             await voice_client.move_to(voice_channel)  # Move to the specified channel
     else:
-        print("Voice channel not found.")
+        print("Voice channel not found.", flush=True)
 
 
 @bot.event
@@ -60,10 +60,10 @@ async def on_message(message):
             await youtube(ctx, query = content_after_play)
         if '!weather' in message.content.lower():
             content_after_weather = message.content.split('!weather', 1)[1].strip()
-            await weather(ctx, query = content_after_weather)
+            await weather(ctx, city = content_after_weather)
         if '!forecast' in message.content.lower():
             content_after_forecast = message.content.split('!forecast', 1)[1].strip()
-            await forecast(ctx, query = content_after_forecast)
+            await forecast(ctx, city = content_after_forecast)
         if '!clear' in message.content.lower():
             await clear(ctx)
         if '!queue' in message.content.lower():
@@ -93,13 +93,13 @@ def play_next_wrapper(error):
     ctx = discord.utils.get(bot.guilds[0].voice_channels, name=VOICE_CHANNEL)
 
     if error:
-        print(f"Playback error: {error}")
+        print(f"Playback error: {error}", flush=True)
     
     fut = asyncio.run_coroutine_threadsafe(play_next(ctx), bot.loop)
     try:
         fut.result()
     except Exception as e:
-        print(f"Error in play_next: {e}")
+        print(f"Error in play_next: {e}", flush=True)
 
     # Check if the queue is empty and voice client is not playing
     if not song_queue and (not voice_client or not voice_client.is_playing()):
@@ -117,9 +117,9 @@ def cleanup_downloads_folder():
     for file_path in mp3_files:
         try:
             os.remove(file_path)
-            print(f"Deleted: {file_path}")
+            print(f"Deleted: {file_path}", flush=True)
         except Exception as e:
-            print(f"Error deleting {file_path}: {e}")
+            print(f"Error deleting {file_path}: {e}", flush=True)
 
 @bot.command(name='play', help='Play audio from a YouTube link or search query')
 async def youtube(ctx, *, query: str = None):
@@ -170,6 +170,7 @@ async def youtube(ctx, *, query: str = None):
 
             ydl.download([url])
         is_downloading = False
+        print(f"Now Playing: {info_dict['title']}", flush=True)
         voice_client.play(discord.FFmpegPCMAudio(unique_filename + ".mp3", options='-filter:a "volume=0.15"'), after=play_next_wrapper)
         await bot_channel.send("```yaml\n" + f"Playing: {info_dict['title']}" + "```")
         
@@ -183,13 +184,10 @@ async def on_command_error(ctx, error):
 @bot.command(name='skip', help='Stop the currently playing song or TTS')
 async def skip(ctx):
     global voice_client
-    if voice_client and (voice_client.is_playing() or voice_client.is_paused()):
-        voice_client.stop()
-        await ctx.send("```yaml\n" + "Skipped the current playback!" + "```")
-        await play_next(ctx)  # Call play_next to immediately start the next song
-    else:
-        await ctx.send("```yaml\n" + "No audio is currently playing." + "```")
-
+    voice_client.stop()
+    await ctx.send("```yaml\n" + "Skipped the current playback!" + "```")
+    print("Skipped current playback!", flush=True)
+    await play_next(ctx)  # Call play_next to immediately start the next song
 
 @bot.command(name='ringo', help='Prompt our AI companion')
 async def ringo(ctx, *, query: str = None):
@@ -216,6 +214,7 @@ async def queue(ctx):
     for index, song in enumerate(song_queue, start=1):
         capitalized_song = song.title()  # Capitalize the first letter of each word
         queue_message += f"{index}. {capitalized_song}\n"
+        print(f"{index}. {capitalized_song}\n", flush=True)
 
     await ctx.send("```yaml\n" + queue_message + "```")
 
@@ -223,9 +222,11 @@ async def queue(ctx):
 @bot.command(name='clear', help='Clears the song queue')
 async def clear(ctx):
     if not song_queue:
+        print("Queue is already empty!", flush=True)
         await ctx.send("```yaml\n Queue is already empty!```")
     else:
         song_queue.clear()
+        print("Queue Cleared", flush=True)
         await ctx.send("```yaml\n Queue cleared!```")
 
 @bot.command(name='weather', help='Displays the weather for a specified location')
@@ -252,6 +253,7 @@ async def weather(ctx, *, city: str):
                 f"- Humidity: {humidity}%"
             )
             await ctx.send(weather_report)
+            print(weather_report, flush=True)
         else:
             await ctx.send("Unable to retrieve weather data.")
 
@@ -284,6 +286,7 @@ async def forecast(ctx, *, city: str):
                 f"- Max Chance of Rain: {max_chance_of_rain}%"
             )
             await ctx.send(forecast_report)
+            print(forecast_report, flush=True)
         else:
             await ctx.send("Unable to retrieve forecast data.")
 
