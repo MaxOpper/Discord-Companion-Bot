@@ -69,30 +69,31 @@ def on_press(key):
     
 
 def on_release(key):
+    text = ""  # Initialize text to an empty string
     try:
         if hasattr(key, 'char'):
-            key_char = key.char.upper()  # Convert to uppercase if it's a character key
+            key_char = key.char.upper()
         else:
-            key_char = key.name.upper()  # Convert to uppercase for special keys like F6
+            key_char = key.name.upper()
 
         if key_char == PREFERRED_KEYBRIND:
             print(f"{PREFERRED_KEYBRIND} released, stopping recording...", flush=True)
             stop_recording()
-            text = transcribe_audio()
-            if text:
-                text = re.sub(r"\breplay\b|\bskip\b|\bplay\b|\bweather\b|\bweather\b|\bqueue\b|\bclear\b", prepend_exclamation, text)
+            text = transcribe_audio()  # Transcribe audio
+
+            if text:  # Check if text is not empty
+                text = re.sub(r"\breplay\b|\bskip\b|\bplay\b|\bweather\b|\bqueue\b|\bclear\b", prepend_exclamation, text)
                 send_to_discord(text, DISCORD_CHANNEL_WEBHOOK_TRANSCRIBE, False)
-            if any(keyword in text for keyword in ["!play", "!skip", "!replay", "!weather", "!forecast", "!weather", "!queue", "!clear"]):
-                return
 
+                if any(keyword in text for keyword in ["!play", "!skip", "!replay", "!weather", "!forecast", "!queue", "!clear"]):
+                    return
 
-        res = g4f.ChatCompletion.create(
-            model=g4f.models.default,
-            messages=[{"role": "user", "content": IDENTITY + " Current Prompt: " + text}],
-            proxy="http://host:port",
-            # or socks5://user:pass@host:port
-            timeout=120,  # in secs
-        )
+                res = g4f.ChatCompletion.create(
+                    model=g4f.models.default,
+                    messages=[{"role": "user", "content": IDENTITY + " Current Prompt: " + text}],
+                    proxy="http://host:port",
+                    timeout=120,
+                )
 
         if len(res) > 2000:
             split_point = res[:2000].rfind(" ")
