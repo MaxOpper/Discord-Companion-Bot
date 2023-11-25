@@ -79,8 +79,8 @@ def on_release(key):
             print(f"{PREFERRED_KEYBRIND} released, stopping recording...", flush=True)
             stop_recording()
             text = transcribe_audio()
-            text = re.sub(r"\breplay\b|\bskip\b|\bplay\b|\bweather\b|\bweather\b|\bqueue\b|\bclear\b", prepend_exclamation, text)
             if text:
+                text = re.sub(r"\breplay\b|\bskip\b|\bplay\b|\bweather\b|\bweather\b|\bqueue\b|\bclear\b", prepend_exclamation, text)
                 send_to_discord(text, DISCORD_CHANNEL_WEBHOOK_TRANSCRIBE, False)
             if any(keyword in text for keyword in ["!play", "!skip", "!replay", "!weather", "!forecast", "!weather", "!queue", "!clear"]):
                 return
