@@ -15,6 +15,7 @@ WEATHER_API_KEY = config.get('weather_api')
 IDENTITY = config.get('identity')
 VOICE_CHANNEL = config.get('preferred_voice_channel')
 TEXT_CHANNEL = config.get('preferred_text_channel')
+TTS_BOOL = config.get('tts_enabled')
 intents = discord.Intents.default()
 intents.messages = True
 intents.guilds = True
@@ -24,6 +25,7 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 voice_client = None
 song_queue = []
 is_downloading = False
+conversation_history = {}
 
 # Define a global voice_client variable initially set to None
 voice_client = None
@@ -68,7 +70,7 @@ async def on_message(message):
             await clear(ctx)
         if '!queue' in message.content.lower():
             await queue(ctx)
-        if ':pear:' in message.content:
+        if ':pear:' in message.content and TTS_BOOL == True:
             await tts(message.content, voice_client)
 
     await bot.process_commands(message)
@@ -174,8 +176,6 @@ async def youtube(ctx, *, query: str = None):
         voice_client.play(discord.FFmpegPCMAudio(unique_filename + ".mp3", options='-filter:a "volume=0.15"'), after=play_next_wrapper)
         await bot_channel.send("```yaml\n" + f"Playing: {info_dict['title']}" + "```")
         
-
-
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.MissingRequiredArgument):
@@ -191,8 +191,16 @@ async def skip(ctx):
 
 @bot.command(name='ringo', help='Prompt our AI companion')
 async def ringo(ctx, *, query: str = None):
-    content = IDENTITY + query
-    print(content)
+    key = str(ctx.channel.id)  # or ctx.author.id for user-specific history
+    if key not in conversation_history:
+        conversation_history[key] = []
+
+    history = conversation_history[key]
+    content = IDENTITY
+    for message, response in history:
+        content += f"User Prior Input: {message}\nYour Response: {response}\n"
+    content += f"User New Query: {query}"
+    print(content, flush=True)
     res = g4f.ChatCompletion.create(
             model=g4f.models.default,
             messages=[{"role": "user", "content": content}],
@@ -200,6 +208,11 @@ async def ringo(ctx, *, query: str = None):
             # or socks5://user:pass@host:port
             timeout=120,  # in secs
         )
+    conversation_history[key].append((query, res))
+    max_length = 4095  # Adjust based on GPT-3.5's limits
+    while len('\n'.join(['\n'.join(pair) for pair in conversation_history[key]])) > max_length:
+        print(conversation_history[key], flush=True)
+        conversation_history[key].pop(0)
     res = res + " :pear:"
     await ctx.send(f"{res}")
 

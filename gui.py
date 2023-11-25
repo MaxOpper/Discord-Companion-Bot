@@ -12,8 +12,9 @@ def load_config():
             return json.load(config_file)
     else:
         return {}
-
+    
 def save_config():
+
     for script_name in script_processes:
         if script_processes[script_name] and script_processes[script_name].poll() is None:
             script_processes[script_name].terminate()
@@ -31,6 +32,7 @@ def save_config():
         "preferred_voice_channel": preferred_voice_channel_entry.get(),
         "preferred_text_channel": preferred_text_channel_entry.get(),
         "preferred_keybind": preferred_voice_command_keybind_entry.get(),
+        "tts_enabled": tts_enabled_var.get(),  
     }
     if all([bot_token_entry.get(), webhook_link_entry.get()]):
         start_discord_button.config(state=tk.NORMAL)
@@ -133,6 +135,7 @@ config = load_config()
 script_processes = {}
 status_labels = {}
 app.columnconfigure(1, weight=1)  # Give expansion property to the second column
+tts_enabled_var = tk.BooleanVar()
 
 # Bot Token Field
 tk.Label(app, text="Bot Token:").grid(row=0, column=0, sticky="w")
@@ -142,9 +145,21 @@ tk.Button(app, text="Edit", command=lambda: clear_config("bot_token")).grid(row=
 
 # Preferred Voice Command Keybind Field
 tk.Label(app, text="Preferred Voice Command Keybind:").grid(row=1, column=0, sticky="w")
-preferred_voice_command_keybind_entry = tk.Entry(app)
-preferred_voice_command_keybind_entry.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
-tk.Button(app, text="Edit", command=lambda: clear_config("preferred_keybind")).grid(row=1, column=2, padx=5, pady=5)
+preferred_voice_command_keybind_entry = tk.Entry(app, width=10)
+preferred_voice_command_keybind_entry.grid(row=1, column=1, sticky="w", padx=5)
+
+# Edit Button for the Preferred Voice Command Keybind Field
+edit_button = tk.Button(app, text="Edit", command=lambda: clear_config("preferred_keybind"))
+# Placing the button in the same column but with an offset
+edit_button.grid(row=1, column=1, sticky="w", padx=(60, 50))
+
+# TTS Checkbox and Label
+# Placing the label in the same column but with an offset
+tk.Label(app, text="Enable TTS:").grid(row=1, column=1, sticky="w", padx=(100, 50))
+tts_checkbox = tk.Checkbutton(app, variable=tts_enabled_var)
+# Placing the checkbox in the same column but with an offset
+tts_checkbox.grid(row=1, column=1, sticky="w", padx=(165, 130))
+
 
 # Channel Webhook Transcribe Field
 tk.Label(app, text="Channel Webhook For Transcription:").grid(row=2, column=0, sticky="w")
@@ -239,6 +254,10 @@ if "preferred_text_channel" in config:
 if "preferred_keybind" in config:
     preferred_voice_command_keybind_entry.insert(0, config["preferred_keybind"])
     preferred_voice_command_keybind_entry.config(state=tk.DISABLED)
+if "tts_enabled" in config:
+    tts_enabled_var.set(config["tts_enabled"])
+else:
+    tts_enabled_var.set(False)  # Default value if not specified in the config
 
 
 update_button_states()
