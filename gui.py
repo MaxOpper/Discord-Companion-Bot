@@ -3,6 +3,8 @@ from tkinter import messagebox
 import json
 import os
 import subprocess
+import threading
+import queue
 
 def load_config():
     if os.path.exists('config.json'):
@@ -59,12 +61,26 @@ def clear_config(field):
         preferred_text_channel_entry.config(state=tk.NORMAL)
     # ... other fields as needed
 
-def toggle_script(script_name, button):
+def redirect_output(text_widget, output_queue):
+    """ Continuously update the text widget with script output. """
+    while True:
+        output = output_queue.get()
+        if output is None:  # A None in the queue indicates the thread should stop
+            break
+        text_widget.insert(tk.END, output)
+        text_widget.see(tk.END)
+
+def toggle_script(script_name, button, output_queue):
     global script_processes
     venv_python = 'venv/Scripts/python.exe'
     if script_name not in script_processes or script_processes[script_name].poll() is not None:
-        # Start the script using the Python interpreter from the virtual environment
-        script_processes[script_name] = subprocess.Popen([venv_python, f'{script_name}.py'], creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+        # Redirect output to a queue
+        script_processes[script_name] = subprocess.Popen([venv_python, f'{script_name}.py'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+        
+        # Start a thread to read output from the subprocess and put it in the queue
+        threading.Thread(target=lambda: [output_queue.put(line) for line in iter(script_processes[script_name].stdout.readline, '')], daemon=True).start()
+        threading.Thread(target=lambda: [output_queue.put(line) for line in iter(script_processes[script_name].stderr.readline, '')], daemon=True).start()
+
         status_labels[script_name].config(text='Online', fg='green')
         button.config(text=f"Stop {script_name.replace('_', ' ').title()}")
     else:
@@ -72,7 +88,6 @@ def toggle_script(script_name, button):
         script_processes[script_name].terminate()
         status_labels[script_name].config(text='Offline', fg='red')
         button.config(text=f"Start {script_name.replace('_', ' ').title()}")
-
 
 app = tk.Tk()
 app.title("Bot Launcher")
@@ -126,13 +141,13 @@ preferred_text_channel_entry.grid(row=6, column=1, sticky="ew", padx=5, pady=5)
 tk.Button(app, text="Clear", command=lambda: clear_config("preferred_text_channel")).grid(row=6, column=2, padx=5, pady=5)
 
 # Start DiscordFunction.py Button and Status
-start_discord_button = tk.Button(app, text="Start Discord Bot", command=lambda: toggle_script('DiscordFunction', start_discord_button), state=tk.DISABLED)
+start_discord_button = tk.Button(app, text="Start Discord Bot", command=lambda: toggle_script('DiscordFunction', start_discord_button, output_queue), state=tk.DISABLED)
 start_discord_button.grid(row=7, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
 status_labels['DiscordFunction'] = tk.Label(app, text='Offline', fg='red')
 status_labels['DiscordFunction'].grid(row=7, column=2)
 
 # Start VoiceHook.py Button and Status
-start_voicehook_button = tk.Button(app, text="Start Voice Hook", command=lambda: toggle_script('VoiceHook', start_voicehook_button), state=tk.DISABLED)
+start_voicehook_button = tk.Button(app, text="Start Voice Hook", command=lambda: toggle_script('VoiceHook', start_voicehook_button, output_queue), state=tk.DISABLED)
 start_voicehook_button.grid(row=8, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
 status_labels['VoiceHook'] = tk.Label(app, text='Offline', fg='red')
 status_labels['VoiceHook'].grid(row=8, column=2)
@@ -169,10 +184,19 @@ if "preferred_text_channel" in config:
     preferred_text_channel_entry.insert(0, config["preferred_text_channel"])
     preferred_text_channel_entry.config(state=tk.DISABLED)
 
+
 update_button_states()
 
 # Save Configuration Button
 tk.Button(app, text="Save Configuration", command=save_config).grid(row=9, column=0, columnspan=3, sticky="ew", padx=5, pady=5)
+# Mini-Terminal (Text Widget)
+terminal_output = tk.Text(app, height=10)
+terminal_output.grid(row=10, column=0, columnspan=3, sticky="ew", padx=5, pady=5)
 
+# Queue for handling output
+output_queue = queue.Queue()
+
+# Thread for updating terminal_output from output_queue
+threading.Thread(target=redirect_output, args=(terminal_output, output_queue), daemon=True).start()
 
 app.mainloop()
