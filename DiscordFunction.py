@@ -222,11 +222,9 @@ async def queue(ctx):
     if not song_queue:
         await ctx.send("```yaml\n" + "The queue is currently empty." + "```")
         return
-
-    # Constructing the queue message with capitalized song titles
     queue_message = "Current Queue:\n"
     for index, song in enumerate(song_queue, start=1):
-        capitalized_song = song.title()  # Capitalize the first letter of each word
+        capitalized_song = song.title() 
         queue_message += f"{index}. {capitalized_song}\n"
         print(f"{index}. {capitalized_song}\n", flush=True)
 
@@ -313,4 +311,5 @@ async def tts(text, voice_client):
     print(text)
     tts.save('tts.mp3')
     voice_client.play(discord.FFmpegPCMAudio('tts.mp3', options='-filter:a "volume=0.15"'))
+
 bot.run(TOKEN)

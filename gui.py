@@ -28,7 +28,7 @@ def save_config():
         "webhook_link": webhook_link_entry.get(),
         "weather_api": weather_link_entry.get(),
         "channel_webhook_transcribe": channel_webhook_transcribe_entry.get(),
-        "identity": identity_entry.get("1.0", tk.END).strip(),  # Getting text from Text widget
+        "identity": identity_entry.get("1.0", tk.END).strip(),
         "preferred_voice_channel": preferred_voice_channel_entry.get(),
         "preferred_text_channel": preferred_text_channel_entry.get(),
         "preferred_keybind": preferred_voice_command_keybind_entry.get(),
