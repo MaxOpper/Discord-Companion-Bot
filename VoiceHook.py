@@ -70,6 +70,7 @@ def on_press(key):
 
 def on_release(key):
     text = ""  # Initialize text to an empty string
+    res = ""
     try:
         if hasattr(key, 'char'):
             key_char = key.char.upper()
@@ -82,7 +83,8 @@ def on_release(key):
             text = transcribe_audio()  # Transcribe audio
 
             if text:  # Check if text is not empty
-                text = re.sub(r"\breplay\b|\bskip\b|\bplay\b|\bweather\b|\bqueue\b|\bclear\b", prepend_exclamation, text)
+                text = text.lower()
+                text = re.sub(r"\breplay\b|\bskip\b|\bplay\b|\bweather\b|\bqueue\b|\bclear\b|\bforecast\b", prepend_exclamation, text)
                 send_to_discord(text, DISCORD_CHANNEL_WEBHOOK_TRANSCRIBE, False)
 
                 if any(keyword in text for keyword in ["!play", "!skip", "!replay", "!weather", "!forecast", "!queue", "!clear"]):
@@ -94,16 +96,16 @@ def on_release(key):
                     proxy="http://host:port",
                     timeout=120,
                 )
-
-        if len(res) > 2000:
-            split_point = res[:2000].rfind(" ")
-            first_part = res[:split_point]
-            second_part = res[split_point:]
-            send_to_discord(first_part, DISCORD_CHANNEL_WEBHOOK_OUTPUT)
-            send_to_discord(second_part, DISCORD_CHANNEL_WEBHOOK_OUTPUT)
-        else:
-            res = res + " :pear:"
-            send_to_discord(res, DISCORD_CHANNEL_WEBHOOK_OUTPUT, True)
+        if res and isinstance(res, str):
+            if len(res) > 2000:
+                split_point = res[:2000].rfind(" ")
+                first_part = res[:split_point]
+                second_part = res[split_point:]
+                send_to_discord(first_part, DISCORD_CHANNEL_WEBHOOK_OUTPUT)
+                send_to_discord(second_part, DISCORD_CHANNEL_WEBHOOK_OUTPUT)
+            else:
+                res = res + " :pear:"
+                send_to_discord(res, DISCORD_CHANNEL_WEBHOOK_OUTPUT, True)
         pass
     except AttributeError:
         pass  # Handle attribute errors if any

@@ -49,6 +49,7 @@ async def on_ready():
 
 @bot.event
 async def on_message(message):
+    ctx_text =  discord.utils.get(bot.guilds[0].text_channels, name=TEXT_CHANNEL)
     if message.author.bot:
         if '!replay' in message.content.lower():
             await play(message.channel)
@@ -62,14 +63,14 @@ async def on_message(message):
             await youtube(ctx, query = content_after_play)
         if '!weather' in message.content.lower():
             content_after_weather = message.content.split('!weather', 1)[1].strip()
-            await weather(ctx, city = content_after_weather)
+            await weather(ctx_text, city = content_after_weather)
         if '!forecast' in message.content.lower():
             content_after_forecast = message.content.split('!forecast', 1)[1].strip()
-            await forecast(ctx, city = content_after_forecast)
+            await forecast(ctx_text, city = content_after_forecast)
         if '!clear' in message.content.lower():
-            await clear(ctx)
+            await clear(ctx_text)
         if '!queue' in message.content.lower():
-            await queue(ctx)
+            await queue(ctx_text)
         if ':pear:' in message.content and TTS_BOOL == True:
             await tts(message.content, voice_client)
 
