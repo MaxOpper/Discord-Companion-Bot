@@ -1,5 +1,8 @@
 # Discord Companion Bot
 
+Full Write Up:
+https://drive.google.com/file/d/125cyK3xAI4foVghxPTdsPzTwDH8AVd31/view?usp=sharing
+
 ## Description
 This project consists of a Discord bot integrated with advanced voice command capabilities. It's designed to enhance user interaction within Discord channels by offering functionalities like playing songs, retrieving GPT 3.5 queries, and more, all controlled via text and voice commands.
 
